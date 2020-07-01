@@ -6,6 +6,7 @@ if(count(debug_backtrace()) == 0)
 }
 
 const bot_id_key = "id";
+const bot_name_key = "name";
 const bot_pass_key = "pass";
 const bot_author_key = "author";
 
@@ -32,7 +33,7 @@ const parse_mode_key = "parse_mode";
 
 const chat_key = "chat";
 
-function process_update($api, $update)
+function process_update($api, $name, $update)
 {
     if(!is_array($update))
         return;
@@ -60,7 +61,10 @@ function process_update($api, $update)
     $command_entities = get_command_entities_from_message($message);
     
     $list_command = get_command_from_message($command_entities, $text);
-    foreach($list_command as $command)
+    
+    $list_true_command = get_true_command($chat_id, $user, $list_command);
+    
+    foreach($list_true_command as $command)
         process_response($message, $chat_id, $command, $user, $api);
 }
 
@@ -174,14 +178,52 @@ function get_command_from_message($command_entities, $text)
         });
 }
 
+function get_true_command($chat_id, $user, $list_command)
+{
+    $user_id = $user[id_key];
+    
+    $require_bot_name = $chat_id != $user_id;
+    if(!$require_bot_name)
+        return $list_command;
+    
+    $list_splited_command = array_map(function ($command)
+    {
+        return explode("@", $command);
+    },
+        $list_command);
+    
+    $list_owned_command = array_filter($list_splited_command,
+        function ($command_array)
+        {
+            if(count($command_array) < 2)
+                return FALSE;
+            
+            if($command_array[1] != $_GET[bot_name_key])
+                return FALSE;
+            
+            return TRUE;
+        });
+    
+    return array_map(function ($command_array)
+    {
+        return $command_array[0];
+    },
+        $list_owned_command);
+}
+
 function process_response($message, $chat_id, $command, $user, $api)
 {
     $mention_data = build_mention($user);
-    switch($command)
+    switch(substr($command, 1))
     {
-        case "/chat_id":
+        case "chat_id":
         {
             response_get_chat_id($chat_id, $mention_data, $api);
+            exit(0);
+        }
+        case "hello":
+        {
+            response_hello($chat_id, $mention_data, $api);
             exit(0);
         }
     }
@@ -263,4 +305,9 @@ function send_message($text, $chat_id, $mention_data, $api)
 function response_get_chat_id($chat_id, $mention_data, $api)
 {
     send_message($chat_id, $chat_id, $mention_data, $api);
+}
+
+function response_hello($chat_id, $mention_data, $api)
+{
+    send_message("Hello!", $chat_id, $mention_data, $api);
 }
