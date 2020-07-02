@@ -195,12 +195,13 @@ function get_true_command($chat_id, $user, $list_command)
     $list_owned_command = array_filter($list_splited_command,
         function ($command_array)
         {
-            if(count($command_array) < 2)
+            if(count($command_array) > 2)
                 return FALSE;
             
-            if($command_array[1] != $_GET[bot_name_key])
-                return FALSE;
-            
+            if(count($command_array) == 2)
+                if($command_array[1] != $_GET[bot_name_key])
+                    return FALSE;
+                
             return TRUE;
         });
     
